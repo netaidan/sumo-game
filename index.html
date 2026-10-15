@@ -3,76 +3,82 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sumo Smash!</title>
+  <meta name="theme-color" content="#141518">
+  <title>Sumo — Two-Player Arena</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>Sumo <span>Smash!</span></h1>
-  </header>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark" lang="ja">相撲</span>
+        <span class="word">SUMO</span>
+      </div>
+      <span class="tagline">Two-player arena</span>
+    </header>
 
-  <section class="scoreboard" aria-live="polite">
-    <div class="score p1">
-      <span class="emoji">🍅</span>
-      <span class="name" id="p1Name" dir="auto">Player 1</span>
-      <span class="pips" id="p1Pips"></span>
-    </div>
-    <div class="vs">first to 3</div>
-    <div class="score p2">
-      <span class="pips" id="p2Pips"></span>
-      <span class="name" id="p2Name" dir="auto">Player 2</span>
-      <span class="emoji">🫐</span>
-    </div>
-  </section>
+    <section class="scoreboard" aria-live="polite">
+      <div class="score p1">
+        <span class="name" id="p1Name" dir="auto">Player 1</span>
+        <span class="pips" id="p1Pips"></span>
+        <span class="num" id="p1Score">0</span>
+      </div>
+      <div class="status">
+        <span class="round" id="roundLabel">Round 1</span>
+        <span class="target">First to 3</span>
+      </div>
+      <div class="score p2">
+        <span class="num" id="p2Score">0</span>
+        <span class="pips" id="p2Pips"></span>
+        <span class="name" id="p2Name" dir="auto">Player 2</span>
+      </div>
+    </section>
 
-  <main class="stage">
-    <canvas id="game" aria-label="Sumo arena"></canvas>
+    <main class="stage">
+      <canvas id="game" aria-label="Sumo arena"></canvas>
 
-    <div class="overlay" id="overlay">
-      <form class="panel" id="menuPanel" autocomplete="off">
-        <h2>Push your rival out of the ring!</h2>
-        <p>Build up speed and slam into them. First to win <b>3 rounds</b> wins the match.</p>
-        <div class="names">
-          <label class="name-field p1">
-            <span>🍅 Player 1 Name</span>
-            <input id="p1Input" type="text" maxlength="16" dir="auto" placeholder="Player 1" spellcheck="false">
-          </label>
-          <label class="name-field p2">
-            <span>🫐 Player 2 Name</span>
-            <input id="p2Input" type="text" maxlength="16" dir="auto" placeholder="Player 2" spellcheck="false">
-          </label>
+      <div class="overlay" id="overlay">
+        <form class="panel" id="menuPanel" autocomplete="off">
+          <span class="eyebrow">Match setup</span>
+          <h2>Push your opponent out of the ring</h2>
+          <p class="lede">Build momentum, time your charge, and hold the centre. First to win three bouts takes the match.</p>
+          <div class="names">
+            <label class="name-field p1">
+              <span class="label">Player 1 Name</span>
+              <input id="p1Input" type="text" maxlength="16" dir="auto" placeholder="Player 1" spellcheck="false">
+            </label>
+            <label class="name-field p2">
+              <span class="label">Player 2 Name</span>
+              <input id="p2Input" type="text" maxlength="16" dir="auto" placeholder="Player 2" spellcheck="false">
+            </label>
+          </div>
+          <button id="startBtn" type="submit" class="primary">Start Match</button>
+        </form>
+        <div class="panel hidden" id="overPanel">
+          <span class="eyebrow">Match winner</span>
+          <h2 id="winnerText" dir="auto">Winner</h2>
+          <p class="final" id="finalScore"></p>
+          <div class="buttons">
+            <button id="againBtn" type="button" class="primary">Play Again</button>
+            <button id="namesBtn" type="button" class="secondary">Change Names</button>
+          </div>
         </div>
-        <button id="startBtn" type="submit">Start!</button>
-      </form>
-      <div class="panel hidden" id="overPanel">
-        <h2 id="winnerText">Winner!</h2>
-        <p id="finalScore"></p>
-        <div class="buttons">
-          <button id="againBtn" type="button">Play Again</button>
-          <button id="namesBtn" type="button" class="secondary">Change Names</button>
-        </div>
       </div>
-    </div>
-  </main>
+    </main>
 
-  <section class="controls">
-    <div class="ctrl p1">
-      <h3>🍅 Player 1</h3>
-      <div class="keys">
-        <div class="row"><kbd>W</kbd></div>
-        <div class="row"><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div>
+    <section class="controls" aria-label="Controls">
+      <div class="ctrl p1">
+        <span class="who">Player 1</span>
+        <span class="group"><span class="cap">Move</span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>
+        <span class="group"><span class="cap">Charge</span><kbd class="wide">Space</kbd></span>
       </div>
-      <p>Move with <b>WASD</b> · Dash: <kbd class="wide">Space</kbd></p>
-    </div>
-    <div class="ctrl p2">
-      <h3>Player 2 🫐</h3>
-      <div class="keys">
-        <div class="row"><kbd>↑</kbd></div>
-        <div class="row"><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></div>
+      <div class="ctrl p2">
+        <span class="who">Player 2</span>
+        <span class="group"><span class="cap">Move</span><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span>
+        <span class="group"><span class="cap">Charge</span><kbd class="wide">Enter</kbd></span>
       </div>
-      <p>Move with <b>Arrows</b> · Dash: <kbd class="wide">Enter</kbd></p>
-    </div>
-  </section>
+    </section>
+  </div>
 
   <script src="game.js"></script>
 </body>
