@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#141518">
-  <title>Sumo — Two-Player Arena</title>
+  <title>Sumo — Arena</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,7 +14,7 @@
         <span class="mark" lang="ja">相撲</span>
         <span class="word">SUMO</span>
       </div>
-      <span class="tagline">Two-player arena</span>
+      <span class="tagline">Solo or two players</span>
     </header>
 
     <section class="scoreboard" aria-live="polite">
@@ -42,15 +42,23 @@
           <span class="eyebrow">Match setup</span>
           <h2>Push your opponent out of the ring</h2>
           <p class="lede">Build momentum, time your charge, and hold the centre. First to win three bouts takes the match.</p>
+          <div class="mode-switch" role="radiogroup" aria-label="Game mode">
+            <label><input type="radio" name="mode" value="solo"><span>Solo vs Computer</span></label>
+            <label><input type="radio" name="mode" value="duo" checked><span>Two Players</span></label>
+          </div>
           <div class="names">
             <label class="name-field p1">
               <span class="label">Player 1 Name</span>
               <input id="p1Input" type="text" maxlength="16" dir="auto" placeholder="Player 1" spellcheck="false">
             </label>
-            <label class="name-field p2">
+            <label class="name-field p2 duo-only">
               <span class="label">Player 2 Name</span>
               <input id="p2Input" type="text" maxlength="16" dir="auto" placeholder="Player 2" spellcheck="false">
             </label>
+            <div class="name-field p2 solo-only">
+              <span class="label">Opponent</span>
+              <span class="cpu-name">Computer</span>
+            </div>
           </div>
           <button id="startBtn" type="submit" class="primary">Start Match</button>
         </form>
@@ -60,7 +68,7 @@
           <p class="final" id="finalScore"></p>
           <div class="buttons">
             <button id="againBtn" type="button" class="primary">Play Again</button>
-            <button id="namesBtn" type="button" class="secondary">Change Names</button>
+            <button id="namesBtn" type="button" class="secondary">Change Mode</button>
           </div>
         </div>
       </div>
@@ -73,9 +81,11 @@
         <span class="group"><span class="cap">Charge</span><kbd class="wide">Space</kbd></span>
       </div>
       <div class="ctrl p2">
-        <span class="who">Player 2</span>
-        <span class="group"><span class="cap">Move</span><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span>
-        <span class="group"><span class="cap">Charge</span><kbd class="wide">Enter</kbd></span>
+        <span class="who duo-only">Player 2</span>
+        <span class="group duo-only"><span class="cap">Move</span><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span>
+        <span class="group duo-only"><span class="cap">Charge</span><kbd class="wide">Enter</kbd></span>
+        <span class="who solo-only">Computer</span>
+        <span class="cap solo-only">Moves on its own</span>
       </div>
     </section>
   </div>

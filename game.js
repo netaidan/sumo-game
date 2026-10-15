@@ -57,6 +57,19 @@
     arenaLayer = buildArenaLayer(dpr);
   }
 
+  // ---------- Mode ----------
+  const CPU_NAME = 'Computer';
+  const modeRadios = [...document.querySelectorAll('input[name="mode"]')];
+  let mode = (modeRadios.find(r => r.checked) || {}).value || 'duo'; // 'solo' (vs computer) | 'duo'
+  const isCpu = i => mode === 'solo' && i === 1;
+
+  function showMode() {
+    document.body.classList.toggle('mode-solo', mode === 'solo');
+  }
+  // the scoreboard follows the choice right away ("Computer" in solo)
+  modeRadios.forEach(r => r.addEventListener('change', () => { mode = r.value; showMode(); applyNames(); }));
+  showMode();
+
   // ---------- Input ----------
   const held = new Set();
   const GAME_KEYS = new Set();
@@ -75,7 +88,7 @@
     held.add(e.code);
     if (!e.repeat) {
       players.forEach((p, i) => {
-        if (PLAYER_DEFS[i].keys.dash.includes(e.code)) p.dashQueued = true;
+        if (!isCpu(i) && PLAYER_DEFS[i].keys.dash.includes(e.code)) p.dashQueued = true;
       });
     }
   });
@@ -127,9 +140,10 @@
   let shake = 0;
   let time = 0;
 
-  function makePlayer(def) {
+  function makePlayer(def, index) {
     return {
       def,
+      index,
       x: def.startX, y: ARENA.y,
       vx: 0, vy: 0,
       r: 38,
@@ -140,6 +154,7 @@
       falling: false,
       fallT: 0,
       squash: 0, squashAngle: 0,
+      brain: makeBrain(), // only used when the computer controls this wrestler
     };
   }
 
@@ -167,7 +182,7 @@
   const iso = name => '⁨' + name + '⁩';
 
   function applyNames() {
-    names = PLAYER_DEFS.map((d, i) => cleanName(nameInputs[i].value, d.defaultName));
+    names = PLAYER_DEFS.map((d, i) => isCpu(i) ? CPU_NAME : cleanName(nameInputs[i].value, d.defaultName));
     names.forEach((n, i) => {
       nameEls[i].textContent = n;
       nameEls[i].title = n;
@@ -200,6 +215,8 @@
   // Start (button or Enter in a name field) reads the names; Play Again reuses them.
   menuPanel.addEventListener('submit', e => {
     e.preventDefault();
+    mode = (modeRadios.find(r => r.checked) || {}).value || mode;
+    showMode();
     applyNames();
     startMatch();
   });
@@ -212,8 +229,75 @@
     players = PLAYER_DEFS.map(makePlayer);
     overPanel.classList.add('hidden');
     menuPanel.classList.remove('hidden');
-    nameInputs[0].focus();
+    (modeRadios.find(r => r.checked) || nameInputs[0]).focus();
   });
+
+  // ---------- Computer opponent ----------
+  // It looks at the ring only every so often (its reaction time) and keeps its last decision
+  // in between, with a little wobble in its aim, so a quick human can out-manoeuvre it.
+  const CPU = {
+    reactMin: 0.16, reactMax: 0.28, // seconds between decisions
+    firstReact: 0.3,                // extra hesitation at the start call
+    aimNoise: 0.2,                  // radians of random error in its aim
+    edgeCaution: 0.74,              // how close to the rope (incl. momentum) before it backs off
+    dashChance: 0.35,               // chance to charge when it sees a good opening
+  };
+
+  function makeBrain() {
+    return { wait: CPU.firstReact + Math.random() * 0.15, ix: 0, iy: 0, dash: false };
+  }
+
+  function cpuIntent(me, opp, dt) {
+    const b = me.brain;
+    b.wait -= dt;
+    if (b.wait <= 0) {
+      cpuDecide(me, opp);
+      b.wait = CPU.reactMin + Math.random() * (CPU.reactMax - CPU.reactMin);
+    }
+    const dash = b.dash;
+    b.dash = false; // a charge is a single press
+    return { ix: b.ix, iy: b.iy, dash };
+  }
+
+  function cpuDecide(me, opp) {
+    const b = me.brain;
+    const mx = me.x - ARENA.x, my = me.y - ARENA.y;
+    const dMe = Math.hypot(mx, my) || 1;
+    const ox = opp.x - ARENA.x, oy = opp.y - ARENA.y;
+    const dOpp = Math.hypot(ox, oy) || 1;
+
+    // aim slightly ahead of where the opponent is going
+    const dx = opp.x + opp.vx * 0.15 - me.x, dy = opp.y + opp.vy * 0.15 - me.y;
+    const dist = Math.hypot(dx, dy) || 1;
+
+    // how close to falling out, counting speed already carrying it toward the rope
+    const outSpeed = (me.vx * mx + me.vy * my) / dMe;
+    const danger = dMe / ARENA.r + Math.max(0, outSpeed) / 900;
+
+    let ax, ay;
+    if (danger > CPU.edgeCaution) {
+      // recover: head back to the centre, sidestepping away from the opponent
+      ax = -mx / dMe; ay = -my / dMe;
+      const px = -ay, py = ax;
+      const side = Math.sign(dx * px + dy * py) || 1;
+      ax -= px * side * 0.6; ay -= py * side * 0.6;
+      if (dist < 130 && me.dashCd <= 0 && Math.random() < 0.3) b.dash = true;
+    } else {
+      // attack from the centre side so the push drives the opponent toward the rope
+      const ux = ox / dOpp, uy = oy / dOpp;
+      const inside = (dx * ux + dy * uy) / dist; // 1 = pushing straight outward
+      if (inside > 0.2 || dist < 100) {
+        ax = dx; ay = dy;
+      } else {
+        ax = opp.x - ux * 95 - me.x; ay = opp.y - uy * 95 - me.y;
+      }
+      if (me.dashCd <= 0 && dist > 90 && dist < 230 && inside > 0.3 && Math.random() < CPU.dashChance) b.dash = true;
+    }
+
+    const a = Math.atan2(ay, ax) + (Math.random() * 2 - 1) * CPU.aimNoise;
+    b.ix = Math.cos(a);
+    b.iy = Math.sin(a);
+  }
 
   // ---------- Physics ----------
   function burst(x, y, color, count, speed) {
@@ -224,11 +308,22 @@
     }
   }
 
-  function updatePlayer(p, controllable, dt) {
+  // What a human is asking for this step: a direction and whether to charge.
+  function keyIntent(p) {
     const k = p.def.keys;
+    return {
+      ix: (held.has(k.right) ? 1 : 0) - (held.has(k.left) ? 1 : 0),
+      iy: (held.has(k.down) ? 1 : 0) - (held.has(k.up) ? 1 : 0),
+      dash: p.dashQueued,
+    };
+  }
+
+  // Humans and the computer both go through here, so they share the same movement,
+  // acceleration, charge strength and cooldown.
+  function updatePlayer(p, controllable, dt) {
     if (controllable && !p.falling) {
-      let ix = (held.has(k.right) ? 1 : 0) - (held.has(k.left) ? 1 : 0);
-      let iy = (held.has(k.down) ? 1 : 0) - (held.has(k.up) ? 1 : 0);
+      const intent = isCpu(p.index) ? cpuIntent(p, players[1 - p.index], dt) : keyIntent(p);
+      let { ix, iy } = intent;
       if (ix || iy) {
         const len = Math.hypot(ix, iy);
         ix /= len; iy /= len;
@@ -236,7 +331,7 @@
         p.vy += iy * ACCEL * dt;
         p.facing = Math.atan2(iy, ix);
       }
-      if (p.dashQueued && p.dashCd <= 0) {
+      if (intent.dash && p.dashCd <= 0) {
         p.vx += Math.cos(p.facing) * DASH_SPEED;
         p.vy += Math.sin(p.facing) * DASH_SPEED;
         p.dashCd = DASH_COOLDOWN;
@@ -814,6 +909,7 @@
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
   players = PLAYER_DEFS.map(makePlayer);
+  applyNames(); // the browser may restore a previous mode choice on reload
   updateScoreboard();
   requestAnimationFrame(frame);
 })();

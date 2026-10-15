@@ -212,6 +212,53 @@ canvas { display: block; width: 100%; height: 100%; }
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- Mode choice ---------- */
+body.mode-solo .duo-only,
+body:not(.mode-solo) .solo-only { display: none !important; }
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 18px;
+  background: #141518;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+}
+.mode-switch label { position: relative; }
+.mode-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.mode-switch span {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 7px;
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.mode-switch span:hover { color: var(--text); }
+.mode-switch input:checked + span {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.mode-switch input:focus-visible + span { outline: 2px solid var(--sand); outline-offset: 2px; }
+
+.cpu-name {
+  display: block;
+  padding: 10px 12px;
+  font-size: 1.05rem;
+  color: var(--text);
+  background: #141518;
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid var(--p2);
+  border-radius: 8px;
+}
+
 /* ---------- Name inputs ---------- */
 .names {
   display: grid;
