@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sumo Smash!</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Sumo <span>Smash!</span></h1>
+  </header>
+
+  <section class="scoreboard" aria-live="polite">
+    <div class="score p1">
+      <span class="name">🍅 Tomato</span>
+      <span class="pips" id="p1Pips"></span>
+    </div>
+    <div class="vs">first to 3</div>
+    <div class="score p2">
+      <span class="pips" id="p2Pips"></span>
+      <span class="name">Blueberry 🫐</span>
+    </div>
+  </section>
+
+  <main class="stage">
+    <canvas id="game" aria-label="Sumo arena"></canvas>
+
+    <div class="overlay" id="overlay">
+      <div class="panel" id="menuPanel">
+        <h2>Push your rival out of the ring!</h2>
+        <p>Build up speed and slam into them. First to win <b>3 rounds</b> wins the match.</p>
+        <button id="startBtn" type="button">Start!</button>
+      </div>
+      <div class="panel hidden" id="overPanel">
+        <h2 id="winnerText">Winner!</h2>
+        <p id="finalScore"></p>
+        <button id="againBtn" type="button">Play Again</button>
+      </div>
+    </div>
+  </main>
+
+  <section class="controls">
+    <div class="ctrl p1">
+      <h3>🍅 Player 1</h3>
+      <div class="keys">
+        <div class="row"><kbd>W</kbd></div>
+        <div class="row"><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div>
+      </div>
+      <p>Move with <b>WASD</b> · Dash: <kbd class="wide">Space</kbd></p>
+    </div>
+    <div class="ctrl p2">
+      <h3>Player 2 🫐</h3>
+      <div class="keys">
+        <div class="row"><kbd>↑</kbd></div>
+        <div class="row"><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></div>
+      </div>
+      <p>Move with <b>Arrows</b> · Dash: <kbd class="wide">Enter</kbd></p>
+    </div>
+  </section>
+
+  <script src="game.js"></script>
+</body>
+</html>
