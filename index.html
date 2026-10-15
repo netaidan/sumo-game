@@ -13,13 +13,15 @@
 
   <section class="scoreboard" aria-live="polite">
     <div class="score p1">
-      <span class="name">🍅 Tomato</span>
+      <span class="emoji">🍅</span>
+      <span class="name" id="p1Name" dir="auto">Player 1</span>
       <span class="pips" id="p1Pips"></span>
     </div>
     <div class="vs">first to 3</div>
     <div class="score p2">
       <span class="pips" id="p2Pips"></span>
-      <span class="name">Blueberry 🫐</span>
+      <span class="name" id="p2Name" dir="auto">Player 2</span>
+      <span class="emoji">🫐</span>
     </div>
   </section>
 
@@ -27,15 +29,28 @@
     <canvas id="game" aria-label="Sumo arena"></canvas>
 
     <div class="overlay" id="overlay">
-      <div class="panel" id="menuPanel">
+      <form class="panel" id="menuPanel" autocomplete="off">
         <h2>Push your rival out of the ring!</h2>
         <p>Build up speed and slam into them. First to win <b>3 rounds</b> wins the match.</p>
-        <button id="startBtn" type="button">Start!</button>
-      </div>
+        <div class="names">
+          <label class="name-field p1">
+            <span>🍅 Player 1 Name</span>
+            <input id="p1Input" type="text" maxlength="16" dir="auto" placeholder="Player 1" spellcheck="false">
+          </label>
+          <label class="name-field p2">
+            <span>🫐 Player 2 Name</span>
+            <input id="p2Input" type="text" maxlength="16" dir="auto" placeholder="Player 2" spellcheck="false">
+          </label>
+        </div>
+        <button id="startBtn" type="submit">Start!</button>
+      </form>
       <div class="panel hidden" id="overPanel">
         <h2 id="winnerText">Winner!</h2>
         <p id="finalScore"></p>
-        <button id="againBtn" type="button">Play Again</button>
+        <div class="buttons">
+          <button id="againBtn" type="button">Play Again</button>
+          <button id="namesBtn" type="button" class="secondary">Change Names</button>
+        </div>
       </div>
     </div>
   </main>

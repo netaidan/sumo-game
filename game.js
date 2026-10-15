@@ -14,12 +14,12 @@
 
   const PLAYER_DEFS = [
     {
-      name: 'Tomato', color: '#ff4d6d', dark: '#c9184a', belt: '#ffbe0b',
+      defaultName: 'Player 1', color: '#ff4d6d', dark: '#c9184a', belt: '#ffbe0b',
       keys: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', dash: ['Space'] },
       startX: ARENA.x - 110, facing: 0,
     },
     {
-      name: 'Blueberry', color: '#3a86ff', dark: '#1d4ed8', belt: '#8ac926',
+      defaultName: 'Player 2', color: '#3a86ff', dark: '#1d4ed8', belt: '#8ac926',
       keys: { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', dash: ['Enter', 'NumpadEnter'] },
       startX: ARENA.x + 110, facing: Math.PI,
     },
@@ -34,6 +34,8 @@
   const winnerText = document.getElementById('winnerText');
   const finalScore = document.getElementById('finalScore');
   const pipEls = [document.getElementById('p1Pips'), document.getElementById('p2Pips')];
+  const nameEls = [document.getElementById('p1Name'), document.getElementById('p2Name')];
+  const nameInputs = [document.getElementById('p1Input'), document.getElementById('p2Input')];
 
   let currentDpr = 0;
   function resizeCanvas() {
@@ -54,7 +56,13 @@
     Object.values(d.keys).flat().forEach(k => GAME_KEYS.add(k));
   });
 
+  function isTyping(e) {
+    const t = e.target;
+    return t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+  }
+
   window.addEventListener('keydown', e => {
+    if (isTyping(e)) return; // typing a name must never move or dash
     if (GAME_KEYS.has(e.code)) e.preventDefault(); // stop arrows/space scrolling the page
     held.add(e.code);
     if (!e.repeat) {
@@ -65,6 +73,7 @@
   });
   window.addEventListener('keyup', e => held.delete(e.code));
   window.addEventListener('blur', () => held.clear());
+  nameInputs.forEach(input => input.addEventListener('focus', () => held.clear()));
 
   // ---------- Sound (tiny synth, no files) ----------
   let audio = null;
@@ -100,6 +109,7 @@
   // ---------- Game state ----------
   let players = [];
   let scores = [0, 0];
+  let names = PLAYER_DEFS.map(d => d.defaultName);
   let state = 'menu';   // menu | countdown | fight | roundOver | matchOver
   let stateTimer = 0;
   let banner = null;    // { text, color, t }
@@ -130,8 +140,27 @@
     lastCount = -1;
   }
 
+  // Clean up a typed name; blank or spaces-only falls back to "Player 1"/"Player 2".
+  function cleanName(raw, fallback) {
+    const name = raw.replace(/\s+/g, ' ').trim();
+    return name || fallback;
+  }
+
+  // Wrap a name in Unicode bidi isolates so Hebrew names sit correctly inside English text.
+  const iso = name => '\u2068' + name + '\u2069';
+
+  function applyNames() {
+    names = PLAYER_DEFS.map((d, i) => cleanName(nameInputs[i].value, d.defaultName));
+    names.forEach((n, i) => {
+      nameEls[i].textContent = n;
+      nameEls[i].title = n;
+    });
+  }
+
   function startMatch() {
     initAudio();
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    held.clear();
     scores = [0, 0];
     updateScoreboard();
     overlay.classList.add('hidden');
@@ -149,8 +178,22 @@
     });
   }
 
-  document.getElementById('startBtn').addEventListener('click', e => { e.currentTarget.blur(); startMatch(); });
-  document.getElementById('againBtn').addEventListener('click', e => { e.currentTarget.blur(); startMatch(); });
+  // Start (button or Enter in a name field) reads the names; Play Again reuses them.
+  menuPanel.addEventListener('submit', e => {
+    e.preventDefault();
+    applyNames();
+    startMatch();
+  });
+  document.getElementById('againBtn').addEventListener('click', startMatch);
+  document.getElementById('namesBtn').addEventListener('click', () => {
+    state = 'menu';
+    scores = [0, 0];
+    updateScoreboard();
+    players = PLAYER_DEFS.map(makePlayer);
+    overPanel.classList.add('hidden');
+    menuPanel.classList.remove('hidden');
+    nameInputs[0].focus();
+  });
 
   // ---------- Physics ----------
   function burst(x, y, color, count, speed) {
@@ -274,7 +317,7 @@
           const w = out[0] ? 1 : 0;
           scores[w]++;
           updateScoreboard();
-          banner = { text: `${PLAYER_DEFS[w].name} wins the round!`, color: PLAYER_DEFS[w].color, t: 0, dur: 2 };
+          banner = { text: `${iso(names[w])} wins the round!`, color: PLAYER_DEFS[w].color, t: 0, dur: 2 };
         }
       }
     } else if (state === 'roundOver' && stateTimer > 2) {
@@ -300,7 +343,7 @@
   function endMatch(w) {
     state = 'matchOver';
     const def = PLAYER_DEFS[w];
-    winnerText.textContent = `🏆 ${def.name} is the Yokozuna! 🏆`;
+    winnerText.textContent = `🏆 ${iso(names[w])} is the Yokozuna! 🏆`;
     winnerText.style.color = def.color;
     finalScore.textContent = `Final score: ${scores[0]} – ${scores[1]}`;
     menuPanel.classList.add('hidden');
@@ -479,7 +522,12 @@
   function drawBigText(text, color, size, alpha = 1, y = ARENA.y) {
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.font = `900 ${size}px "Trebuchet MS", "Segoe UI", sans-serif`;
+    const font = s => `900 ${s}px "Trebuchet MS", "Segoe UI", Arial, sans-serif`;
+    ctx.font = font(size);
+    // shrink to fit so long names never run off the canvas
+    const maxW = W - 60;
+    const textW = ctx.measureText(text).width;
+    if (textW > maxW) ctx.font = font(Math.floor(size * maxW / textW));
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineWidth = 10;

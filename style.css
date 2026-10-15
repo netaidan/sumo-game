@@ -11,7 +11,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  font-family: "Trebuchet MS", "Segoe UI", Arial, system-ui, sans-serif;
   color: var(--ink);
   background:
     radial-gradient(circle at 20% 10%, #ffd6e0 0, transparent 40%),
@@ -43,6 +43,7 @@ header h1 span { color: var(--p1); }
 }
 .score {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -62,6 +63,13 @@ header h1 span { color: var(--p1); }
   opacity: .7;
   white-space: nowrap;
 }
+.score .name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.score .emoji, .pips { flex-shrink: 0; }
 .pips { display: inline-flex; gap: 6px; }
 .pip {
   width: 18px; height: 18px;
@@ -91,10 +99,13 @@ canvas { display: block; width: 100%; height: 100%; }
   justify-content: center;
   background: rgba(43, 45, 66, .45);
   backdrop-filter: blur(2px);
+  overflow-y: auto; /* small screens: let a tall panel scroll instead of being clipped */
+  padding: 12px 0;
 }
 .overlay.hidden, .panel.hidden { display: none; }
 
 .panel {
+  margin: auto;
   background: var(--cream);
   border-radius: 20px;
   padding: 24px 32px;
@@ -103,8 +114,47 @@ canvas { display: block; width: 100%; height: 100%; }
   box-shadow: 0 6px 0 rgba(0,0,0,.2);
   animation: pop .35s cubic-bezier(.2, 1.6, .4, 1);
 }
-.panel h2 { margin: 0 0 8px; font-size: clamp(1.3rem, 3.5vw, 2rem); }
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: clamp(1.3rem, 3.5vw, 2rem);
+  overflow-wrap: anywhere;
+}
 .panel p { margin: 0 0 18px; }
+
+.names {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: start;
+  font-weight: 800;
+  font-size: .95rem;
+}
+.name-field.p1 span { color: var(--p1); }
+.name-field.p2 span { color: var(--p2); }
+.name-field input {
+  font: inherit;
+  font-size: 1.1rem;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 3px solid;
+  background: white;
+  color: var(--ink);
+  outline: none;
+}
+.name-field.p1 input { border-color: var(--p1); }
+.name-field.p2 input { border-color: var(--p2); }
+.name-field.p1 input:focus { box-shadow: 0 0 0 4px rgba(255, 77, 109, .3); }
+.name-field.p2 input:focus { box-shadow: 0 0 0 4px rgba(58, 134, 255, .3); }
+
+.buttons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 
 button {
   font: inherit;
@@ -121,6 +171,13 @@ button {
 }
 button:hover { transform: translateY(-2px) scale(1.04); }
 button:active { transform: translateY(3px); box-shadow: 0 2px 0 #c9184a; }
+button.secondary {
+  font-size: 1rem;
+  padding: 10px 24px;
+  color: var(--ink);
+  background: #f1f1f6;
+  box-shadow: 0 5px 0 #c8c8d6;
+}
 
 .controls {
   width: 100%;
@@ -164,5 +221,11 @@ kbd.wide { min-width: 60px; padding: 2px 8px; font-size: .85rem; }
 
 @media (max-width: 560px) {
   .controls { grid-template-columns: 1fr; }
-  .score { font-size: .95rem; padding: 6px 10px; }
+  .score { font-size: .95rem; padding: 6px 10px; gap: 6px; }
+  .pip { width: 12px; height: 12px; border-width: 2px; }
+  .names { grid-template-columns: 1fr; }
+  .panel { padding: 14px 16px; }
+  .panel p { margin-bottom: 10px; font-size: .9rem; }
+  .names { gap: 8px; margin-bottom: 12px; }
+  .name-field input { padding: 6px 10px; }
 }
