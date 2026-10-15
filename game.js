@@ -62,6 +62,8 @@
   const modeRadios = [...document.querySelectorAll('input[name="mode"]')];
   let mode = (modeRadios.find(r => r.checked) || {}).value || 'duo'; // 'solo' (vs computer) | 'duo'
   const isCpu = i => mode === 'solo' && i === 1;
+  // In solo the human (Player 1) plays with the arrow keys and Enter.
+  const keysFor = i => (mode === 'solo' ? PLAYER_DEFS[1] : PLAYER_DEFS[i]).keys;
 
   function showMode() {
     document.body.classList.toggle('mode-solo', mode === 'solo');
@@ -84,11 +86,13 @@
 
   window.addEventListener('keydown', e => {
     if (isTyping(e)) return; // typing a name must never move or dash
+    // while a menu or the winner screen is up, keys keep their normal job (Enter presses a button)
+    if (!overlay.classList.contains('hidden')) return;
     if (GAME_KEYS.has(e.code)) e.preventDefault(); // stop arrows/space scrolling the page
     held.add(e.code);
     if (!e.repeat) {
       players.forEach((p, i) => {
-        if (!isCpu(i) && PLAYER_DEFS[i].keys.dash.includes(e.code)) p.dashQueued = true;
+        if (!isCpu(i) && keysFor(i).dash.includes(e.code)) p.dashQueued = true;
       });
     }
   });
@@ -127,6 +131,151 @@
     fall: () => tone(160, 0.5, 'sine', 0.3, -100),
     fanfare: () => [220, 277, 330, 440].forEach((f, i) => tone(f, 0.5, 'triangle', 0.08, 0, i * 0.13)),
   };
+
+  // ---------- Music (generated, no files) ----------
+  // A 4-bar loop at 128 BPM: taiko-style drums, a tense bass ostinato and a sparse melody in
+  // the Japanese "in" scale (D Eb G A Bb). Notes are scheduled slightly ahead on the audio clock,
+  // and everything goes through one music bus so it can be faded out as a whole.
+  const MUSIC_VOL = 0.22;             // bus level; sound effects stay well above it
+  const STEP_DUR = 60 / 128 / 4;      // one 16th note
+  const LOOP_STEPS = 64;
+  const NOTE = { C2: 65.41, D2: 73.42, Eb2: 77.78, A1: 55, Bb1: 58.27, D4: 293.66, Eb4: 311.13, G4: 392, A4: 440, Bb4: 466.16, D5: 587.33 };
+  const BASS = [ // one note per 8th, 8 per bar
+    'D2', 'D2', 'D2', 'D2', 'D2', 'D2', 'Eb2', 'D2',
+    'D2', 'D2', 'D2', 'D2', 'C2', 'C2', 'Eb2', 'Eb2',
+    'Bb1', 'Bb1', 'Bb1', 'Bb1', 'A1', 'A1', 'Eb2', 'D2',
+    'D2', 'D2', 'D2', 'D2', 'D2', 'Eb2', 'D2', 'C2',
+  ];
+  const MELODY = { // step: [note, length in steps]
+    0: ['A4', 6], 6: ['Bb4', 2], 8: ['A4', 8],
+    16: ['G4', 4], 20: ['A4', 4], 24: ['Eb4', 8],
+    32: ['D5', 6], 38: ['Bb4', 2], 40: ['A4', 6], 46: ['G4', 2],
+    48: ['A4', 4], 52: ['Eb4', 4], 56: ['D4', 8],
+  };
+  const KICK_STEPS = [0, 6, 8, 14];
+  const KICK_FILL = [0, 6, 8, 10, 12, 13, 14, 15]; // last bar builds into the loop
+
+  let musicOn = true;
+  try { musicOn = localStorage.getItem('sumo-music') !== 'off'; } catch (_) { /* storage blocked */ }
+  let musicStarted = false; // set at the first Start, so music never plays before that
+  let musicBus = null, musicTimer = null, musicStep = 0, musicNext = 0, noiseBuf = null;
+
+  function voice(t, dur, vol, build) {
+    const g = audio.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    g.connect(musicBus);
+    build(g);
+  }
+  function noise(t, dur, vol, filterType, freq, q = 1) {
+    voice(t, dur, vol, g => {
+      const src = audio.createBufferSource();
+      src.buffer = noiseBuf;
+      const f = audio.createBiquadFilter();
+      f.type = filterType; f.frequency.value = freq; f.Q.value = q;
+      src.connect(f).connect(g);
+      src.start(t); src.stop(t + dur);
+    });
+  }
+  function drum(t, vol) { // deep taiko hit: falling sine plus a soft skin slap
+    voice(t, 0.4, vol, g => {
+      const o = audio.createOscillator();
+      o.frequency.setValueAtTime(120, t);
+      o.frequency.exponentialRampToValueAtTime(45, t + 0.14);
+      o.connect(g); o.start(t); o.stop(t + 0.4);
+    });
+    noise(t, 0.04, vol * 0.25, 'lowpass', 900);
+  }
+  function bass(t, freq, dur) {
+    voice(t, dur, 0.28, g => {
+      const o = audio.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = freq;
+      const f = audio.createBiquadFilter();
+      f.type = 'lowpass'; f.Q.value = 6;
+      f.frequency.setValueAtTime(900, t);
+      f.frequency.exponentialRampToValueAtTime(220, t + dur);
+      o.connect(f).connect(g); o.start(t); o.stop(t + dur);
+    });
+  }
+  function lead(t, freq, dur) { // breathy, flute-like line with gentle vibrato
+    const g = audio.createGain();
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.linearRampToValueAtTime(0.07, t + 0.06);
+    g.gain.setValueAtTime(0.07, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    g.connect(musicBus);
+    const o = audio.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = freq;
+    const lfo = audio.createOscillator();
+    const depth = audio.createGain();
+    lfo.frequency.value = 5.5; depth.gain.value = freq * 0.006;
+    lfo.connect(depth).connect(o.frequency);
+    o.connect(g);
+    o.start(t); lfo.start(t); o.stop(t + dur); lfo.stop(t + dur);
+  }
+
+  function playStep(step, t) {
+    const inBar = step % 16, lastBar = step >= 48;
+    if ((lastBar ? KICK_FILL : KICK_STEPS).includes(inBar)) drum(t, inBar === 0 ? 0.9 : 0.6);
+    if (inBar === 4 || inBar === 12) noise(t, 0.05, 0.22, 'bandpass', 1900, 2.5); // rim click
+    noise(t, 0.03, inBar % 2 ? 0.03 : 0.07, 'highpass', 7000);                      // shaker
+    if (step % 2 === 0) bass(t, NOTE[BASS[step / 2]], STEP_DUR * 1.8);
+    const m = MELODY[step];
+    if (m) lead(t, NOTE[m[0]], STEP_DUR * m[1]);
+  }
+
+  function scheduleMusic() {
+    const now = audio.currentTime;
+    if (musicNext < now - 0.2) musicNext = now + 0.05; // tab was in the background: skip ahead, don't burst
+    while (musicNext < now + 0.12) {
+      playStep(musicStep, musicNext);
+      musicStep = (musicStep + 1) % LOOP_STEPS;
+      musicNext += STEP_DUR;
+    }
+  }
+
+  // Safe to call any number of times: there is only ever one loop running.
+  function startMusic() {
+    if (!audio || !musicOn || !musicStarted || musicTimer) return;
+    if (!noiseBuf) {
+      noiseBuf = audio.createBuffer(1, audio.sampleRate, audio.sampleRate);
+      const data = noiseBuf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    }
+    musicBus = audio.createGain();
+    musicBus.gain.value = MUSIC_VOL;
+    musicBus.connect(audio.destination);
+    musicStep = 0;
+    musicNext = audio.currentTime + 0.06;
+    scheduleMusic();
+    musicTimer = setInterval(scheduleMusic, 25);
+  }
+
+  function stopMusic() {
+    if (!musicTimer) return;
+    clearInterval(musicTimer);
+    musicTimer = null;
+    const bus = musicBus; // notes already queued on this bus fade out with it
+    musicBus = null;
+    bus.gain.setTargetAtTime(0, audio.currentTime, 0.03);
+    setTimeout(() => bus.disconnect(), 500);
+  }
+
+  const musicBtn = document.getElementById('musicBtn');
+  function showMusicSetting() {
+    musicBtn.textContent = musicOn ? 'Music: On' : 'Music: Off';
+    musicBtn.setAttribute('aria-pressed', String(musicOn));
+  }
+  musicBtn.addEventListener('click', () => {
+    musicOn = !musicOn;
+    try { localStorage.setItem('sumo-music', musicOn ? 'on' : 'off'); } catch (_) { /* storage blocked */ }
+    showMusicSetting();
+    if (musicOn) startMusic(); else stopMusic();
+    musicBtn.blur(); // so Space/Enter go back to the game
+  });
+  showMusicSetting();
 
   // ---------- Game state ----------
   let players = [];
@@ -191,6 +340,8 @@
 
   function startMatch() {
     initAudio();
+    musicStarted = true;
+    startMusic(); // keeps playing through rounds and replays
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     held.clear();
     scores = [0, 0];
@@ -310,7 +461,7 @@
 
   // What a human is asking for this step: a direction and whether to charge.
   function keyIntent(p) {
-    const k = p.def.keys;
+    const k = keysFor(p.index);
     return {
       ix: (held.has(k.right) ? 1 : 0) - (held.has(k.left) ? 1 : 0),
       iy: (held.has(k.down) ? 1 : 0) - (held.has(k.up) ? 1 : 0),

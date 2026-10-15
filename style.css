@@ -41,7 +41,7 @@ body {
 /* ---------- Header ---------- */
 .topbar {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
@@ -56,6 +56,18 @@ body {
   font-weight: 700;
   letter-spacing: .32em;
 }
+.top-actions { display: flex; align-items: center; gap: 14px; }
+button.toggle {
+  font-size: .72rem;
+  letter-spacing: .12em;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+}
+button.toggle:hover { border-color: var(--muted); }
+button.toggle[aria-pressed="false"] { color: var(--muted); }
 .tagline {
   font-size: .75rem;
   color: var(--muted);
